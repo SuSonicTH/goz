@@ -71,11 +71,7 @@ func getLocalZigBin() string {
 		exe = ".exe"
 	}
 
-	return filepath.Join(zigPath, "bin", "zig"+exe)
-}
-
-func extractArchive(archive, modPath string) {
-	panic("unimplemented")
+	return filepath.Join(zigPath, "zig"+exe)
 }
 
 func downloadZig(modPath, zigVersion string) string {
