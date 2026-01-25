@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const ZIG_VERSION = "0.15.2"
@@ -16,15 +17,25 @@ const ZIG_URL = "https://ziglang.org/download/" + ZIG_VERSION + "/"
 
 func main() {
 	setEnv()
-	executeGo()
+	execute("go", getGoArgs())
+	if upx := os.Getenv("GOZ_UPX"); upx == "1" {
+		//todo: check if upx is on path, if not download
+		execute("upx", []string{"--lzma", getExeName()})
+	}
 }
 
-func executeGo() {
-	ctx := context.Background()
-	cmd := exec.CommandContext(ctx, "go", os.Args[1:]...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	cmd.Run()
+func getExeName() string {
+	for i, arg := range os.Args {
+		if arg == "-o" && i < len(os.Args)-1 {
+			return os.Args[i+1]
+		}
+	}
+	/*todo:
+		check if arguments have name.go exename=> name
+	 	else check if arguments have *.go exename=> name of file with main
+		else check if there is a go.mod exename=> name of module
+	*/
+	panic("goz: to use upx you have to set an output name with -o fileName")
 }
 
 func setEnv() {
@@ -32,12 +43,40 @@ func setEnv() {
 	target := getZigTarget()
 
 	os.Setenv("CGO_ENABLED", "1")
-	os.Setenv("CC", zigBin+" cc -target "+target)
-	os.Setenv("CXX", zigBin+" c++ -target "+target)
+	os.Setenv("CC", getZigCenv("cc", zigBin, target))
+	os.Setenv("CXX", getZigCenv("c++", zigBin, target))
+}
+
+func execute(command string, arguments []string) {
+	ctx := context.Background()
+	cmd := exec.CommandContext(ctx, command, arguments...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+}
+
+func getGoArgs() []string {
+	if strip := os.Getenv("GOZ_STRIP"); strip == "1" {
+		goArgs := make([]string, len(os.Args)-1)
+		copy(goArgs, os.Args[1:])
+
+		goArgs = append(goArgs, "-ldflags")
+		goArgs = append(goArgs, "-s -w")
+		goArgs = append(goArgs, "-trimpath")
+	}
+	return os.Args[1:]
+}
+
+func getZigCenv(comp, zigBin, target string) string {
+	env := []string{zigBin, comp, "-target", target}
+	if strip := os.Getenv("GOZ_STRIP"); strip == "1" {
+		env = append(env, "-Wl,-s")
+	}
+	return strings.Join(env, " ")
 }
 
 func getZigBin() string {
-	zigBin := os.Getenv("GOZBIN")
+	zigBin := os.Getenv("GOZ_ZIG")
 	if zigBin == "" {
 		zigBin = getLocalZigBin()
 	}
@@ -47,7 +86,7 @@ func getZigBin() string {
 func getLocalZigBin() string {
 	goPath := os.Getenv("GOPATH")
 	if goPath == "" {
-		goPath = ".goz"
+		goPath = filepath.Join(os.Getenv("HOME"), "go")
 	}
 
 	modPath := filepath.Join(goPath, "pkg", "mod", "github.com", "goz")
@@ -82,6 +121,7 @@ func downloadZig(modPath, zigVersion string) string {
 	fileName := zigVersion + ext
 	url := ZIG_URL + fileName
 
+	fmt.Printf("goz: downloading %q\n", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -94,7 +134,7 @@ func downloadZig(modPath, zigVersion string) string {
 
 	archivePath := filepath.Join(modPath, fileName)
 	tempPath := archivePath + ".tmp"
-	out, err := os.Create(archivePath)
+	out, err := os.Create(tempPath)
 	if err != nil {
 		panic(err)
 	}
@@ -103,6 +143,10 @@ func downloadZig(modPath, zigVersion string) string {
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
+		panic(err)
+	}
+
+	if err := os.Rename(tempPath, archivePath); err != nil {
 		panic(err)
 	}
 

@@ -15,7 +15,7 @@ import (
 func extractArchive(archive, destination string) {
 	if strings.HasSuffix(archive, ".zip") {
 		extractZip(archive, destination)
-	} else if strings.HasSuffix(archive, ".tar.gz") {
+	} else if strings.HasSuffix(archive, ".tar.xz") {
 		extractTarXz(archive, destination)
 	} else {
 		panic(fmt.Sprintf("unknown compression for file %q", archive))
