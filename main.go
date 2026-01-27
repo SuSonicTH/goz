@@ -133,20 +133,14 @@ func downloadZig(modPath, zigVersion string) string {
 	}
 
 	archivePath := filepath.Join(modPath, fileName)
-	tempPath := archivePath + ".tmp"
-	out, err := os.Create(tempPath)
+	out, err := os.Create(archivePath)
 	if err != nil {
 		panic(err)
 	}
 	defer out.Close()
-	defer os.Remove(tempPath)
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		panic(err)
-	}
-
-	if err := os.Rename(tempPath, archivePath); err != nil {
 		panic(err)
 	}
 
