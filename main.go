@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -15,27 +16,56 @@ import (
 const ZIG_VERSION = "0.15.2"
 const ZIG_URL = "https://ziglang.org/download/" + ZIG_VERSION + "/"
 
+var targetOs string
+
 func main() {
-	setEnv()
-	execute("go", getGoArgs())
-	if upx := os.Getenv("GOZ_UPX"); upx == "1" {
-		//todo: check if upx is on path, if not download
-		execute("upx", []string{"--lzma", getExeName()})
+	if len(os.Args) > 1 && (os.Args[1] == "build" || os.Args[1] == "install") {
+		setEnv()
+		execute("go", getGoArgs())
+		if upx := os.Getenv("GOZ_UPX"); upx == "1" {
+			//todo: check if upx is on path, if not download
+			execute("upx", []string{"--lzma", getExeName()})
+		}
+	} else {
+		execute("go", os.Args[1:])
 	}
 }
 
 func getExeName() string {
 	for i, arg := range os.Args {
 		if arg == "-o" && i < len(os.Args)-1 {
-			return os.Args[i+1]
+			return withExeExtention(os.Args[i+1])
 		}
 	}
-	/*todo:
-		check if arguments have name.go exename=> name
-	 	else check if arguments have *.go exename=> name of file with main
-		else check if there is a go.mod exename=> name of module
-	*/
-	panic("goz: to use upx you have to set an output name with -o fileName")
+	for _, arg := range os.Args {
+		if strings.HasSuffix(arg, ".go") && !strings.HasSuffix(arg, "_test.go") {
+			name := arg[:len(arg)-3]
+			return withExeExtention(name)
+		}
+	}
+	return getModuleName()
+}
+
+func withExeExtention(name string) string {
+	if targetOs == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
+
+func getModuleName() string {
+	file, err := os.ReadFile("go.mod")
+	if err != nil {
+		panic(err)
+	}
+
+	re := regexp.MustCompile(`(?m)^\s*module\s+(\S+)$`)
+	if matches := re.FindStringSubmatch(string(file)); len(matches) == 2 {
+		module := strings.Split(matches[1], "/")
+		name := module[len(module)-1]
+		return withExeExtention(name)
+	}
+	panic("goz: no module found, to use upx use a go.mod or set an output name with -o fileName")
 }
 
 func setEnv() {
@@ -170,6 +200,7 @@ func getZigTargetOs() string {
 	if goOs == "" {
 		goOs = runtime.GOOS
 	}
+	targetOs = goOs
 	return zigOsFromGoOs(goOs)
 }
 
