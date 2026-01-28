@@ -15,9 +15,7 @@ var targetOs string
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "build" || os.Args[1] == "install") {
 		setEnv()
-		goargs := getGoArgs()
-		fmt.Println(goargs)
-		execute("go", goargs)
+		execute("go", getGoArgs())
 		executeUpxIfSet()
 	} else {
 		execute("go", os.Args[1:])
