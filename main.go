@@ -3,12 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 )
@@ -18,54 +14,14 @@ const ZIG_URL = "https://ziglang.org/download/" + ZIG_VERSION + "/"
 
 var targetOs string
 
+// todo: show goz version without args and for help/version commands
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "build" || os.Args[1] == "install") {
 		setEnv()
 		execute("go", getGoArgs())
-		if upx := os.Getenv("GOZ_UPX"); upx == "1" {
-			//todo: check if upx is on path, if not download
-			execute("upx", []string{"--lzma", getExeName()})
-		}
 	} else {
 		execute("go", os.Args[1:])
 	}
-}
-
-func getExeName() string {
-	for i, arg := range os.Args {
-		if arg == "-o" && i < len(os.Args)-1 {
-			return withExeExtention(os.Args[i+1])
-		}
-	}
-	for _, arg := range os.Args {
-		if strings.HasSuffix(arg, ".go") && !strings.HasSuffix(arg, "_test.go") {
-			name := arg[:len(arg)-3]
-			return withExeExtention(name)
-		}
-	}
-	return getModuleName()
-}
-
-func withExeExtention(name string) string {
-	if targetOs == "windows" {
-		return name + ".exe"
-	}
-	return name
-}
-
-func getModuleName() string {
-	file, err := os.ReadFile("go.mod")
-	if err != nil {
-		panic(err)
-	}
-
-	re := regexp.MustCompile(`(?m)^\s*module\s+(\S+)$`)
-	if matches := re.FindStringSubmatch(string(file)); len(matches) == 2 {
-		module := strings.Split(matches[1], "/")
-		name := module[len(module)-1]
-		return withExeExtention(name)
-	}
-	panic("goz: no module found, to use upx use a go.mod or set an output name with -o fileName")
 }
 
 func setEnv() {
@@ -113,78 +69,8 @@ func getZigBin() string {
 	return zigBin
 }
 
-func getLocalZigBin() string {
-	goPath := os.Getenv("GOPATH")
-	if goPath == "" {
-		goPath = filepath.Join(os.Getenv("HOME"), "go")
-	}
-
-	modPath := filepath.Join(goPath, "pkg", "mod", "github.com", "goz")
-	if _, err := os.Stat(modPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(modPath, os.ModePerm); err != nil {
-			panic(err)
-		}
-	}
-
-	zigVersion := "zig-" + getZigHost() + "-" + ZIG_VERSION
-	zigPath := filepath.Join(modPath, zigVersion)
-	if _, err := os.Stat(zigPath); os.IsNotExist(err) {
-		archive := downloadZig(modPath, zigVersion)
-		defer os.Remove(archive)
-		os.RemoveAll(zigPath)
-		extractArchive(archive, modPath)
-	}
-
-	exe := ""
-	if runtime.GOOS == "windows" {
-		exe = ".exe"
-	}
-
-	return filepath.Join(zigPath, "zig"+exe)
-}
-
-func downloadZig(modPath, zigVersion string) string {
-	ext := ".tar.xz"
-	if runtime.GOOS == "windows" {
-		ext = ".zip"
-	}
-	fileName := zigVersion + ext
-	url := ZIG_URL + fileName
-
-	fmt.Printf("goz: downloading %q\n", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		panic(fmt.Sprintf("bad response status: %s", resp.Status))
-	}
-
-	archivePath := filepath.Join(modPath, fileName)
-	out, err := os.Create(archivePath)
-	if err != nil {
-		panic(err)
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	return archivePath
-}
-
-var zigTarget *string
-
 func getZigTarget() string {
-	if zigTarget == nil {
-		zt := getZigTargetArch() + "-" + getZigTargetOs()
-		zigTarget = &zt
-	}
-	return *zigTarget
+	return getZigTargetArch() + "-" + getZigTargetOs()
 }
 
 func getZigTargetArch() string {
@@ -204,22 +90,8 @@ func getZigTargetOs() string {
 	return zigOsFromGoOs(goOs)
 }
 
-var zigHost *string
-
 func getZigHost() string {
-	if zigHost == nil {
-		var zh string = getZigHostArch() + "-" + getZigHostOs()
-		zigHost = &zh
-	}
-	return *zigHost
-}
-
-func getZigHostOs() string {
-	return zigOsFromGoOs(runtime.GOOS)
-}
-
-func getZigHostArch() string {
-	return zigArchFromGoArch(runtime.GOARCH)
+	return zigArchFromGoArch(runtime.GOARCH) + "-" + zigOsFromGoOs(runtime.GOOS)
 }
 
 func zigOsFromGoOs(goOs string) string {
