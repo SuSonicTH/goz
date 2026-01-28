@@ -9,16 +9,16 @@ import (
 	"strings"
 )
 
-const ZIG_VERSION = "0.15.2"
-const ZIG_URL = "https://ziglang.org/download/" + ZIG_VERSION + "/"
-
 var targetOs string
 
 // todo: show goz version without args and for help/version commands
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "build" || os.Args[1] == "install") {
 		setEnv()
-		execute("go", getGoArgs())
+		goargs := getGoArgs()
+		fmt.Println(goargs)
+		execute("go", goargs)
+		executeUpxIfSet()
 	} else {
 		execute("go", os.Args[1:])
 	}
@@ -49,6 +49,7 @@ func getGoArgs() []string {
 		goArgs = append(goArgs, "-ldflags")
 		goArgs = append(goArgs, "-s -w")
 		goArgs = append(goArgs, "-trimpath")
+		return goArgs
 	}
 	return os.Args[1:]
 }

@@ -8,8 +8,7 @@ import (
 
 func executeUpxIfSet() {
 	if upx := os.Getenv("GOZ_UPX"); upx == "1" {
-		//todo: check if upx is on path, if not download
-		execute("upx", []string{"--lzma", getExeName()})
+		execute(getLocalUpxBin(), []string{"--lzma", getExeName()})
 	}
 }
 
@@ -30,7 +29,9 @@ func getExeName() string {
 
 func withExeExtention(os, name string) string {
 	if os == "windows" {
-		return name + ".exe"
+		if !strings.HasSuffix(name, ".exe") {
+			return name + ".exe"
+		}
 	}
 	return name
 }
