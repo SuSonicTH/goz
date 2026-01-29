@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -15,23 +16,24 @@ func executeUpxIfSet() {
 func getExeName() string {
 	for i, arg := range os.Args {
 		if arg == "-o" && i < len(os.Args)-1 {
-			return withExeExtention(targetOs, os.Args[i+1])
+			return withPathAndExt(os.Args[i+1])
 		}
 	}
 	for _, arg := range os.Args {
 		if strings.HasSuffix(arg, ".go") && !strings.HasSuffix(arg, "_test.go") {
 			name := arg[:len(arg)-3]
-			return withExeExtention(targetOs, name)
+			return withPathAndExt(name)
 		}
 	}
 	return getModuleName()
 }
 
-func withExeExtention(os, name string) string {
-	if os == "windows" {
-		if !strings.HasSuffix(name, ".exe") {
-			return name + ".exe"
-		}
+func withPathAndExt(name string) string {
+	if targetOs == "windows" && !strings.HasSuffix(name, ".exe") {
+		name += ".exe"
+	}
+	if os.Args[1] == "install" {
+		return filepath.Join(getGoPath(), "bin", name)
 	}
 	return name
 }
@@ -46,7 +48,8 @@ func getModuleName() string {
 	if matches := re.FindStringSubmatch(string(file)); len(matches) == 2 {
 		module := strings.Split(matches[1], "/")
 		name := module[len(module)-1]
-		return withExeExtention(targetOs, name)
+		filepath.Join()
+		return withPathAndExt(name)
 	}
 	panic("goz: no module found, to use upx use a go.mod or set an output name with -o fileName")
 }

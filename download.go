@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const ZIG_VERSION = "0.15.2"
@@ -25,7 +26,7 @@ func getLocalUpxBin() string {
 	return getLocalBin(UPX_URL, version, "upx")
 }
 
-func getLocalBin(url, version, exe string) string {
+func getLocalBin(url, version, executeable string) string {
 	modPath := getModPath()
 
 	path := filepath.Join(modPath, version)
@@ -36,15 +37,14 @@ func getLocalBin(url, version, exe string) string {
 		extractArchive(archive, modPath)
 	}
 
-	return filepath.Join(path, withExeExtention(runtime.GOOS, exe))
+	if targetOs == "windows" && !strings.HasSuffix(executeable, ".exe") {
+		executeable += ".exe"
+	}
+	return filepath.Join(path, executeable)
 }
 
 func getModPath() string {
-	goPath := os.Getenv("GOPATH")
-	if goPath == "" {
-		goPath = filepath.Join(os.Getenv("HOME"), "go")
-	}
-
+	goPath := getGoPath()
 	modPath := filepath.Join(goPath, "pkg", "mod", "github.com", "SuSonicTH", "goz")
 	if _, err := os.Stat(modPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(modPath, os.ModePerm); err != nil {
@@ -53,6 +53,14 @@ func getModPath() string {
 	}
 
 	return modPath
+}
+
+func getGoPath() string {
+	goPath := os.Getenv("GOPATH")
+	if goPath == "" {
+		goPath = filepath.Join(os.Getenv("HOME"), "go")
+	}
+	return goPath
 }
 
 func download(modPath, baseUrl, version string) string {

@@ -15,7 +15,9 @@ const VERSION = "goz version " + GOZ_VERSION + " using zig " + ZIG_VERSION
 var targetOs string
 
 func main() {
-	if len(os.Args) > 1 {
+	if len(os.Args) == 1 {
+		fmt.Println(VERSION)
+	} else {
 		switch os.Args[1] {
 		case "build":
 			runCGO()
