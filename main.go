@@ -9,17 +9,34 @@ import (
 	"strings"
 )
 
+const GOZ_VERSION = "0.1.0"
+const VERSION = "goz version " + GOZ_VERSION + " using zig " + ZIG_VERSION
+
 var targetOs string
 
-// todo: show goz version without args and for help/version commands
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "build" || os.Args[1] == "install") {
-		setEnv()
-		execute("go", getGoArgs())
-		executeUpxIfSet()
-	} else {
-		execute("go", os.Args[1:])
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "build":
+			runCGO()
+		case "install":
+			runCGO()
+		case "help":
+			if len(os.Args) == 2 {
+				fmt.Println(VERSION)
+			}
+		case "version":
+			fmt.Println(VERSION)
+		}
 	}
+	execute("go", os.Args[1:])
+}
+
+func runCGO() {
+	setEnv()
+	execute("go", getGoArgs())
+	executeUpxIfSet()
+	os.Exit(0)
 }
 
 func setEnv() {
