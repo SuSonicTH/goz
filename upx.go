@@ -8,7 +8,7 @@ import (
 )
 
 func executeUpxIfSet() {
-	if upx := os.Getenv("GOZ_UPX"); upx == "1" {
+	if os.Getenv("GOZ_UPX") == "1" || os.Getenv("GOZ_SMALL") == "1" {
 		execute(getLocalUpxBin(), []string{"--lzma", getExeName()})
 	}
 }

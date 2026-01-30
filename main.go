@@ -59,7 +59,7 @@ func execute(command string, arguments []string) {
 }
 
 func getGoArgs() []string {
-	if strip := os.Getenv("GOZ_STRIP"); strip == "1" {
+	if os.Getenv("GOZ_STRIP") == "1" || os.Getenv("GOZ_SMALL") == "1" {
 		goArgs := make([]string, len(os.Args)-1)
 		copy(goArgs, os.Args[1:])
 
