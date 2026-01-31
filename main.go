@@ -48,6 +48,7 @@ func setEnv() {
 	os.Setenv("CGO_ENABLED", "1")
 	os.Setenv("CC", getZigCenv("cc", zigBin, target))
 	os.Setenv("CXX", getZigCenv("c++", zigBin, target))
+	os.Setenv("CGO_LDFLAGS", "-static")
 }
 
 func execute(command string, arguments []string) {
@@ -59,16 +60,18 @@ func execute(command string, arguments []string) {
 }
 
 func getGoArgs() []string {
-	if os.Getenv("GOZ_STRIP") == "1" || os.Getenv("GOZ_SMALL") == "1" {
-		goArgs := make([]string, len(os.Args)-1)
-		copy(goArgs, os.Args[1:])
+	goArgs := make([]string, len(os.Args)-1)
+	copy(goArgs, os.Args[1:])
 
+	goArgs = append(goArgs, "-tags")
+	goArgs = append(goArgs, "netgo osusergo")
+
+	if os.Getenv("GOZ_STRIP") == "1" || os.Getenv("GOZ_SMALL") == "1" {
 		goArgs = append(goArgs, "-ldflags")
 		goArgs = append(goArgs, "-s -w")
 		goArgs = append(goArgs, "-trimpath")
-		return goArgs
 	}
-	return os.Args[1:]
+	return goArgs
 }
 
 func getZigCenv(comp, zigBin, target string) string {

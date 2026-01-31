@@ -104,9 +104,9 @@ func upxHost() string {
 	case "linux":
 		switch runtime.GOARCH {
 		case "amd64":
-			return "x86_64_linunx"
+			return "amd64_linux"
 		case "arm64":
-			return "aarch64_linunx"
+			return "aarch64_linux"
 		default:
 			panic(fmt.Sprintf("unsupported host architecture %q", runtime.GOARCH))
 		}
